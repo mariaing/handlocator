@@ -17,7 +17,7 @@ module.exports = {
   connections: {
     mysqlServer: {
       user: 'root',
-      password: ''
+      password: 'joselirio2'
     },
 
   },

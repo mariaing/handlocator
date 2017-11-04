@@ -18,6 +18,7 @@ module.exports.connections = {
     adapter: 'sails-mysql',
     host: '127.0.0.1',
     database: 'btproject', //optional
+    pass: "joselirio2"
   },
 
 

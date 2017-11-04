@@ -12,9 +12,12 @@ var fs = require('fs');
 const uid = require('uid-safe');
 
 module.exports = {
-    identity: 'Asignaciones',
 
-    create(req, res){
+    identity: 'Asignaciones',
+    /********************************************/
+    /* creacion de una asignacion               */
+    /********************************************/
+    create(req, res) {
         var data = req.allParams();
 
         async.parallel({
@@ -38,8 +41,8 @@ module.exports = {
         });
 
         function broadcastAsignacion(data) {
-            Empleados.findOne({id: data}).then((empleado) => {
-                User.findOne({id: empleado.user}).then((user) => {
+            Empleados.findOne({ id: data }).then((empleado) => {
+                User.findOne({ id: empleado.user }).then((user) => {
                     var data = {
                         title: 'Trabajo asignado',
                         type: 'trabajo',
@@ -52,45 +55,61 @@ module.exports = {
         }
     },
 
-    confirmAsignacion(req, res){
+    /********************************************/
+    /* confirmar asignacion                     */
+    /********************************************/
+    confirmAsignacion(req, res) {
         var data = req.allParams();
-        Empleados.findOne({id: data.empleado}).then((empleado) => {
-            User.findOne({id: empleado.user}).then((user) => {
-                var data = {
-                    title: 'Hola ' +empleado.nombres + ' ' + empleado.apellidos,
-                    type: 'confirmacion_verify',
-                    body: 'Hemos validado tu servicio, puedes trabajar tranquilamente.'
-                }
-                PusherService.send(data, user.reg_id);
-                res.ok();
-            })
-        });
+        Empleados.findOne({ id: data.empleado })
+            .then((empleado) => {
+                User
+                    .findOne({ id: empleado.user }).then((user) => {
+                        var data = {
+                            title: 'Hola ' + empleado.nombres + ' ' + empleado.apellidos,
+                            type: 'confirmacion_verify',
+                            body: 'Hemos validado tu servicio, puedes trabajar tranquilamente.'
+                        }
+                        PusherService.send(data, user.reg_id);
+                        res.ok();
+                    })
+            });
     },
 
-    cancelAsignacion(req, res){
+    /********************************************/
+    /* cancelar de una asignacion               */
+    /********************************************/
+    cancelAsignacion(req, res) {
+
         var data = req.allParams();
-        Asignaciones.update(data.id,  {
+
+        Asignaciones.update(data.id, {
             estado: 'vigente',
             imagen: null
         }).then(updateRecords => {
             broadcastAsignacion(updateRecords);
         })
+
         function broadcastAsignacion(data) {
-            Empleados.findOne({id: data[0].empleado}).then((empleado) => {
-                User.findOne({id: empleado.user}).then((user) => {
-                    var data = {
-                        title: 'Hola ' +empleado.nombres + ' ' + empleado.apellidos,
-                        type: 'confirmacion_cancel',
-                        body: 'No pudimos verificar que seas tu en el trabajo, cancelaremos tu servicio.'
-                    }
-                    PusherService.send(data, user.reg_id);
-                    res.ok();
-                })
-            });
+            Empleados.findOne({ id: data[0].empleado })
+                .then((empleado) => {
+                    User.findOne({ id: empleado.user })
+                        .then((user) => {
+                            var data = {
+                                title: 'Hola ' + empleado.nombres + ' ' + empleado.apellidos,
+                                type: 'confirmacion_cancel',
+                                body: 'No pudimos verificar que seas tu en el trabajo, cancelaremos tu servicio.'
+                            }
+                            PusherService.send(data, user.reg_id);
+                            res.ok();
+                        })
+                });
         }
     },
 
-    getAsignaciones(req, res){
+    /********************************************/
+    /* listar de una asignacion               */
+    /********************************************/
+    getAsignaciones(req, res) {
         Asignaciones.find({
             empresa: req.allParams().id,
             createdAt: limitFecha(req)
@@ -99,101 +118,116 @@ module.exports = {
         })
     },
 
-    updateEstado(req, res){
-        if(req.allParams().estado === 'vigente'){
-            Asignaciones.update(req.allParams().id, {
-                estado: req.allParams().estado,
-                imagen: null
-            }).then(updateRecords => {
-                Empleados.findOne({id: updateRecords[0].empleado}).then((empleado) => {
+    /********************************************/
+    /* actualizar estado                        */
+    /********************************************/
+    updateEstado(req, res) {
+        var asignacion = req.allParams();
 
+        if (asignacion.estado === 'vigente') {
+
+            Asignaciones
+                .update(asignacion.id, { estado: asignacion.estado, imagen: null })
+                .then(updateRecords => {
+                    Empleados.findOne({ id: updateRecords[0].empleado })
+                        .then((empleado) => {
+
+                        });
+                    return res.ok();
                 });
-                return res.ok();
-            });
-        }else if(req.allParams().estado === 'finalizado'){
-            var fecha = req.allParams().fecha_finalizada ? moment(req.allParams().fecha_finalizada) : moment();
+
+        } else if (asignacion.estado === 'finalizado') {
+
+            var fecha = asignacion.fecha_finalizada ? moment(asignacion.fecha_finalizada) : moment();
+
             fecha.set('hour', 0).set('minute', 0).set('second', 0);
             fecha.add(1, 'd');
-            Asignaciones.update(req.allParams().id, {
-                estado: req.allParams().estado,
-                hora_finalizada: req.allParams().hora_finalizada,
-                fecha_finalizada: req.allParams().fecha_finalizada,
-                duracion: req.allParams().duracion
-            }).then(updateRecords => {
-                Empleados.findOne({id: updateRecords[0].empleado}).then((empleado) => {
-                    var data = {
-                        empleado : empleado,
-                        trabajo: updateRecords[0]
-                    };
-                    sails.sockets.broadcast('empresa'+empleado.empresa+'watcher', 'trabajoSocket', data, req);
+
+            Asignaciones
+                .update(asignacion.id, {
+                    estado: asignacion.estado,
+                    hora_finalizada: asignacion.hora_finalizada,
+                    fecha_finalizada: asignacion.fecha_finalizada,
+                    duracion: asignacion.duracion
+                }).then(updateRecords => {
+                    Empleados.findOne({ id: updateRecords[0].empleado })
+                    .then((empleado) => {
+                        var data = {
+                            empleado: empleado,
+                            trabajo: updateRecords[0]
+                        };
+                        sails.sockets.broadcast('empresa' + empleado.empresa + 'watcher', 'trabajoSocket', data, req);
+                    });
+                    return res.ok();
                 });
-                return res.ok();
-            });
-        }else {
-            var fecha =  moment();
+        } else {            
+            var fecha = moment();
             fecha.add(1, 'd');
             Asignaciones.update(req.allParams().id, {
                 estado: req.allParams().estado
             }).then(updateRecords => {
-                Empleados.findOne({id: updateRecords[0].empleado}).then((empleado) => {
+                Empleados.findOne({ id: updateRecords[0].empleado }).then((empleado) => {
                     var data = {
-                        empleado : empleado,
+                        empleado: empleado,
                         trabajo: updateRecords[0],
                         fecha_ingreso: fecha
                     };
-                    sails.sockets.broadcast('empresa'+empleado.empresa+'watcher', 'trabajoSocket', data, req);
+                    sails.sockets.broadcast('empresa' + empleado.empresa + 'watcher', 'trabajoSocket', data, req);
                 });
                 return res.ok();
             });
         }
     },
 
-    updateHora(req, res){
+    updateHora(req, res) {
+        var asignacion = req.allParams();
         var hora_actual = moment(new Date()).format("hh:mm a");
-        if(req.allParams().hora_finalizada !== hora_actual) return res.badRequest('Algo paso con las horas');
-        Asignaciones.update(req.allParams().id, {
-            hora_finalizada: req.allParams().hora_finalizada,
+
+        if (asignacion.hora_finalizada !== hora_actual) return res.badRequest('Algo paso con las horas');
+        
+        Asignaciones.update(asignacion.id, {
+            hora_finalizada: asignacion.hora_finalizada,
             estado: req.allParams().estado
         }).then(updateRecords => {
-            Empleados.findOne({id: updateRecords[0].empleado}).then((empleado) => {
+            Empleados.findOne({ id: updateRecords[0].empleado }).then((empleado) => {
                 var data = {
-                    empleado : empleado,
+                    empleado: empleado,
                     trabajo: updateRecords[0]
                 };
-                sails.sockets.broadcast('empresa'+empleado.empresa+'watcher', 'trabajoSocket', data, req);
+                sails.sockets.broadcast('empresa' + empleado.empresa + 'watcher', 'trabajoSocket', data, req);
             });
             return res.ok();
         });
     },
 
-    updateTime(req, res){
+    updateTime(req, res) {
         console.log(req.allParams());
         Asignaciones.update(req.allParams().id, {
             duracion: req.allParams().duracion,
         }).then(updateRecords => {
-            Empleados.findOne({id: updateRecords[0].empleado}).then((empleado) => {
+            Empleados.findOne({ id: updateRecords[0].empleado }).then((empleado) => {
                 var data = {
-                    empleado : empleado,
+                    empleado: empleado,
                     trabajo: updateRecords[0]
                 };
-                sails.sockets.broadcast('empleado'+empleado.id+'watcher', 'HoraActualizada', data, req);
+                sails.sockets.broadcast('empleado' + empleado.id + 'watcher', 'HoraActualizada', data, req);
                 return res.ok(data.trabajo);
             });
             //return res.ok(updateRecords[0]);
         });
     },
 
-    saveImagen(req, res){
-        Asignaciones.findOne({id : req.params.id})
+    saveImagen(req, res) {
+        Asignaciones.findOne({ id: req.params.id })
             .then((asignacion) => {
                 if (asignacion) {
                     req.file('file').upload({
-                            dirname: sails.config.appPath + '/public/images/confirmaciones',
-                            saveAs: function (__newFileStream, cb) {
-                                cb(null, uid.sync(18) + asignacion.id + '.' + _.last(__newFileStream.filename.split('.')));
-                            },
-                            maxBytes: 10000000
+                        dirname: sails.config.appPath + '/public/images/confirmaciones',
+                        saveAs: function (__newFileStream, cb) {
+                            cb(null, uid.sync(18) + asignacion.id + '.' + _.last(__newFileStream.filename.split('.')));
                         },
+                        maxBytes: 10000000
+                    },
                         (error, uploadedFiles) => {
                             if (error) return res.negotiate(error);
                             if (!uploadedFiles[0]) return res.badRequest('ha ocurrido un error inesperado al almacenar la imagen');
